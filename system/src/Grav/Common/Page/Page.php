@@ -303,7 +303,6 @@ class Page
                 // Set some options
                 $file->settings(['native' => true, 'compat' => true]);
                 try {
-                    $this->raw_content = $file->markdown();
                     $this->frontmatter = $file->frontmatter();
                     $this->header = (object)$file->header();
 
@@ -328,14 +327,11 @@ class Page
                         $e->getMessage(),
                         $file->raw()
                     ]));
-                    $this->raw_content = $file->markdown();
                     $this->frontmatter = $file->frontmatter();
                     $this->header = (object)$file->header();
                 }
                 $var = true;
             }
-
-
         }
 
         if ($var) {
@@ -531,7 +527,7 @@ class Page
     public function content($var = null)
     {
         if ($var !== null) {
-            $this->raw_content = $var;
+            $this->rawMarkdown($var);
 
             // Update file object.
             $file = $this->file();
@@ -575,7 +571,7 @@ class Page
 
             // if no cached-content run everything
             if ($this->content === false || $cache_enable === false) {
-                $this->content = $this->raw_content;
+                $this->content = $this->rawMarkdown();
                 Grav::instance()->fireEvent('onPageContentRaw', new Event(['page' => $this]));
 
                 if ($twig_first) {
@@ -757,7 +753,7 @@ class Page
     public function value($name, $default = null)
     {
         if ($name == 'content') {
-            return $this->raw_content;
+            return $this->rawMarkdown();
         }
         if ($name == 'route') {
             return $this->parent()->rawRoute();
@@ -836,6 +832,10 @@ class Page
             $this->raw_content = $var;
         }
 
+        if ($this->raw_content == null) {
+            $this->raw_content = $this->file()->markdown();
+        }
+
         return $this->raw_content;
     }
 
@@ -867,7 +867,7 @@ class Page
         if ($file) {
             $file->filename($this->filePath());
             $file->header((array)$this->header());
-            $file->markdown($this->raw_content);
+            $file->markdown($this->rawMarkdown());
             $file->save();
         }
     }
