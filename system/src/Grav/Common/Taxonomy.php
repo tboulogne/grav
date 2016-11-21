@@ -11,6 +11,9 @@ namespace Grav\Common;
 use Grav\Common\Config\Config;
 use Grav\Common\Page\Collection;
 use Grav\Common\Page\Page;
+use Grav\Common\Grav;
+use Grav\Common\Uri;
+use RocketTheme\Toolbox\Event\Event;
 
 /**
  * The Taxonomy object is a singleton that holds a reference to a 'taxonomy map'. This map is
@@ -84,7 +87,7 @@ class Taxonomy
      *
      * @return Collection       Collection object set to contain matches found in the taxonomy map
      */
-    public function findTaxonomy($taxonomies, $operator = 'and')
+    public function findTaxonomy($taxonomies, $operator = 'and', $pagination = true, $limit = 9)
     {
         $matches = [];
         $results = [];
@@ -108,7 +111,30 @@ class Taxonomy
             }
         }
 
-        return new Collection($results, ['taxonomies' => $taxonomies]);
+        $collection = new Collection($results, ['taxonomies' => $taxonomies,'pagination'=>$pagination,'limit'=>$limit]) ;
+
+        /** @var Grav $grav */
+        $grav = Grav::instance()['grav'];
+        /** @var Uri $uri */
+        $uri = Grav::instance()['uri'];
+
+        // New Custom event to handle things like pagination.
+        $grav->fireEvent('onCollectionProcessed', new Event(['collection' => $collection]));
+
+
+        // Slice and dice the collection if pagination is required
+        
+        if ($pagination) {
+            $params = $collection->params();
+
+            $limit = isset($params['limit']) ? $params['limit'] : 0;
+            $start = !empty($params['pagination']) ? ($uri->currentPage() - 1) * $limit : 0;
+
+            if ($limit && $collection->count() > $limit) {
+                $collection->slice($start, $limit);
+            }
+        }
+        return   $collection ;
     }
 
     /**
